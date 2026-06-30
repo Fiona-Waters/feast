@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from feast import FeatureStore
+from feast.api.catalog import add_catalog_routes
 from feast.api.registry.rest import register_all_routes
 from feast.errors import (
     FeastObjectNotFoundException,
@@ -75,6 +76,8 @@ class RestRegistryServer:
         self._add_openapi_security()
         self._init_auth()
         self._register_routes()
+
+        add_catalog_routes(self.app, self.store)
 
         registry_cfg = getattr(store.config, "registry", None)
         mcp_cfg = getattr(registry_cfg, "mcp", None)
