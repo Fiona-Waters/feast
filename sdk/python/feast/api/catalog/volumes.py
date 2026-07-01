@@ -39,7 +39,7 @@ def get_volume_router(store: FeatureStore) -> APIRouter:
         project = _resolve_namespace(namespace, schema)
         _ensure_namespace_exists(project)
         data_sources = store.registry.list_data_sources(
-            project=project, allow_cache=True, tags={VOLUME_TAG: VOLUME_TAG_VALUE}
+            project=project, allow_cache=False, tags={VOLUME_TAG: VOLUME_TAG_VALUE}
         )
         volumes = [data_source_to_volume_info(ds, namespace) for ds in data_sources]
         return ListVolumesResponse(volumes=volumes)
@@ -142,9 +142,13 @@ def get_volume_router(store: FeatureStore) -> APIRouter:
 
         owner = request.owner if request.owner is not None else (ds.owner or "")
 
+        path = ds.path if hasattr(ds, "path") else ""
+        if request.storage_location is not None:
+            path = request.storage_location
+
         updated = FileSource(
             name=ds.name,
-            path=ds.path if hasattr(ds, "path") else "",
+            path=path,
             timestamp_field="",
             tags=tags,
             owner=owner,

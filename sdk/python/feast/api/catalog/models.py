@@ -131,6 +131,17 @@ class RenameTableRequest(BaseModel):
     destination: TableIdentifier
 
 
+class UpdateTableRequest(BaseModel):
+    description: Optional[str] = None
+    owner: Optional[str] = None
+    location: Optional[str] = None
+    data_source_format: Optional[str] = None
+    schema_: Optional[IcebergSchema] = Field(default=None, alias="schema")
+    properties: Optional[Dict[str, str]] = None
+
+    model_config = {"populate_by_name": True}
+
+
 # --- View models ---
 
 
@@ -220,6 +231,7 @@ class CreateVolumeRequest(BaseModel):
 class UpdateVolumeRequest(BaseModel):
     comment: Optional[str] = None
     owner: Optional[str] = None
+    storage_location: Optional[str] = Field(default=None, alias="storage_location")
     properties: Optional[Dict[str, str]] = None
 
 

@@ -36,7 +36,7 @@ def get_namespace_router(store: FeatureStore) -> APIRouter:
 
     @router.get("/namespaces")
     def list_namespaces() -> ListNamespacesResponse:
-        projects = store.registry.list_projects(allow_cache=True)
+        projects = store.registry.list_projects(allow_cache=False)
         return ListNamespacesResponse(namespaces=[[p.name] for p in projects])
 
     @router.post("/namespaces", status_code=200)

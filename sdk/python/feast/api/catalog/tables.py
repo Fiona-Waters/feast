@@ -13,6 +13,7 @@ from feast.api.catalog.models import (
     LoadTableResponse,
     RenameTableRequest,
     TableIdentifier,
+    UpdateTableRequest,
 )
 from feast.api.catalog.namespaces import DEFAULT_SCHEMA, _resolve_namespace
 from feast.errors import FeastObjectNotFoundException
@@ -56,7 +57,7 @@ def get_table_router(store: FeatureStore) -> APIRouter:
         project = _resolve_namespace(namespace, schema)
         _ensure_namespace_exists(project)
         feature_views = store.registry.list_feature_views(
-            project=project, allow_cache=True
+            project=project, allow_cache=False
         )
         return ListTablesResponse(
             identifiers=[
@@ -149,6 +150,63 @@ def get_table_router(store: FeatureStore) -> APIRouter:
             raise TableNotFoundException(f"{namespace}.{DEFAULT_SCHEMA}", table)
         store.registry.delete_feature_view(table, project=project, commit=True)
         return Response(status_code=204)
+
+    @router.put("/namespaces/{namespace}/namespaces/{schema}/tables/{table}")
+    def update_table(
+        namespace: str, schema: str, table: str, request: UpdateTableRequest
+    ) -> LoadTableResponse:
+        project = _resolve_namespace(namespace, schema)
+        _ensure_namespace_exists(project)
+        try:
+            fv = store.registry.get_feature_view(
+                table, project=project, allow_cache=False
+            )
+        except FeastObjectNotFoundException:
+            raise TableNotFoundException(f"{namespace}.{DEFAULT_SCHEMA}", table)
+
+        description = (
+            request.description if request.description is not None else fv.description
+        )
+        owner = request.owner if request.owner is not None else fv.owner
+        tags = dict(fv.tags) if fv.tags else {}
+        if request.properties:
+            for k, v in request.properties.items():
+                tags[k] = v
+        if request.data_source_format is not None:
+            tags["format"] = request.data_source_format
+
+        location = request.location
+        if location is None:
+            location = (
+                fv.batch_source.path
+                if fv.batch_source and hasattr(fv.batch_source, "path")
+                else f"feast://{namespace}/{DEFAULT_SCHEMA}/tables/{table}"
+            )
+        source = FileSource(
+            name=f"{table}_source",
+            path=location,
+            timestamp_field="",
+        )
+
+        schema_fields = fv.features or None
+        if request.schema_ and request.schema_.fields:
+            schema_fields = []
+            for field in request.schema_.fields:
+                feast_type = ICEBERG_TYPE_TO_FEAST.get(field.type, String)
+                schema_fields.append(Field(name=field.name, dtype=feast_type))
+
+        updated_fv = FeatureView(
+            name=table,
+            source=source,
+            schema=schema_fields,
+            ttl=None,
+            online=False,
+            description=description or "",
+            owner=owner or "",
+            tags=tags,
+        )
+        store.registry.apply_feature_view(updated_fv, project=project, commit=True)
+        return feature_view_to_load_table_response(updated_fv, namespace)
 
     @router.post("/tables/rename", status_code=200)
     def rename_table(request: RenameTableRequest) -> None:
