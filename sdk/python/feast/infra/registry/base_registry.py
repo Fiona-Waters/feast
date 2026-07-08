@@ -663,7 +663,11 @@ class BaseRegistry(ABC):
 
     @abstractmethod
     def get_saved_dataset(
-        self, name: str, project: str, allow_cache: bool = False
+        self,
+        name: str,
+        project: str,
+        allow_cache: bool = False,
+        namespace: str = "",
     ) -> SavedDataset:
         """
         Retrieves a saved dataset.
@@ -672,6 +676,7 @@ class BaseRegistry(ABC):
             name: Name of dataset
             project: Feast project that this dataset belongs to
             allow_cache: Whether to allow returning this dataset from a cached registry
+            namespace: Sub-grouping within the project
 
         Returns:
             Returns either the specified SavedDataset, or raises an exception if
@@ -679,7 +684,13 @@ class BaseRegistry(ABC):
         """
         raise NotImplementedError
 
-    def delete_saved_dataset(self, name: str, project: str, commit: bool = True):
+    def delete_saved_dataset(
+        self,
+        name: str,
+        project: str,
+        commit: bool = True,
+        namespace: str = "",
+    ):
         """
         Delete a saved dataset.
 
@@ -687,6 +698,7 @@ class BaseRegistry(ABC):
             name: Name of dataset
             project: Feast project that this dataset belongs to
             commit: Whether the change should be persisted immediately
+            namespace: Sub-grouping within the project
         """
         raise NotImplementedError
 
@@ -696,6 +708,7 @@ class BaseRegistry(ABC):
         project: str,
         allow_cache: bool = False,
         tags: Optional[dict[str, str]] = None,
+        namespace: str = "",
     ) -> List[SavedDataset]:
         """
         Retrieves a list of all saved datasets in specified project
@@ -704,6 +717,7 @@ class BaseRegistry(ABC):
             project: Feast project
             allow_cache: Whether to allow returning this dataset from a cached registry
             tags: Filter by tags
+            namespace: Sub-grouping within the project (empty = all namespaces)
 
         Returns:
             Returns the list of SavedDatasets

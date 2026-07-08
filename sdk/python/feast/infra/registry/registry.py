@@ -36,6 +36,7 @@ from feast.errors import (
     PermissionNotFoundException,
     ProjectNotFoundException,
     ProjectObjectNotFoundException,
+    SavedDatasetNotFound,
     ValidationReferenceNotFound,
 )
 from feast.feature_service import FeatureService
@@ -1275,23 +1276,57 @@ class Registry(BaseRegistry):
             self.commit()
 
     def get_saved_dataset(
-        self, name: str, project: str, allow_cache: bool = False
+        self,
+        name: str,
+        project: str,
+        allow_cache: bool = False,
+        namespace: str = "",
     ) -> SavedDataset:
         registry_proto = self._get_registry_proto(
             project=project, allow_cache=allow_cache
         )
-        return proto_registry_utils.get_saved_dataset(registry_proto, name, project)
+        return proto_registry_utils.get_saved_dataset(
+            registry_proto, name, project, namespace=namespace
+        )
 
     def list_saved_datasets(
         self,
         project: str,
         allow_cache: bool = False,
         tags: Optional[dict[str, str]] = None,
+        namespace: str = "",
     ) -> List[SavedDataset]:
         registry_proto = self._get_registry_proto(
             project=project, allow_cache=allow_cache
         )
-        return proto_registry_utils.list_saved_datasets(registry_proto, project, tags)
+        return proto_registry_utils.list_saved_datasets(
+            registry_proto, project, tags, namespace=namespace
+        )
+
+    def delete_saved_dataset(
+        self,
+        name: str,
+        project: str,
+        commit: bool = True,
+        namespace: str = "",
+    ):
+        self._prepare_registry_for_changes(project)
+        assert self.cached_registry_proto
+
+        for idx, saved_dataset_proto in enumerate(
+            self.cached_registry_proto.saved_datasets
+        ):
+            if (
+                saved_dataset_proto.spec.name == name
+                and saved_dataset_proto.spec.project == project
+            ):
+                if namespace and saved_dataset_proto.spec.namespace != namespace:
+                    continue
+                del self.cached_registry_proto.saved_datasets[idx]
+                if commit:
+                    self.commit()
+                return
+        raise SavedDatasetNotFound(name, project=project)
 
     def apply_validation_reference(
         self,

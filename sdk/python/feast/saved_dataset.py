@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, cast
 
 import pandas as pd
 import pyarrow
@@ -9,6 +9,9 @@ from google.protobuf.json_format import MessageToJson
 from feast.data_source import DataSource
 from feast.dqm.profilers.profiler import Profile, Profiler
 from feast.importer import import_class
+from feast.protos.feast.core.SavedDataset_pb2 import (
+    ColumnSchema as ColumnSchemaProto,
+)
 from feast.protos.feast.core.SavedDataset_pb2 import SavedDataset as SavedDatasetProto
 from feast.protos.feast.core.SavedDataset_pb2 import SavedDatasetMeta, SavedDatasetSpec
 from feast.protos.feast.core.SavedDataset_pb2 import (
@@ -80,9 +83,12 @@ class SavedDataset:
     features: List[str]
     join_keys: List[str]
     full_feature_names: bool
-    storage: SavedDatasetStorage
+    storage: Optional[SavedDatasetStorage]
     tags: Dict[str, str]
     feature_service_name: Optional[str] = None
+    namespace: str = ""
+    data_source_ref: str = ""
+    columns: List[Dict[str, Any]] = []
 
     created_timestamp: Optional[datetime] = None
     last_updated_timestamp: Optional[datetime] = None
@@ -95,20 +101,26 @@ class SavedDataset:
     def __init__(
         self,
         name: str,
-        features: List[str],
-        join_keys: List[str],
-        storage: SavedDatasetStorage,
+        features: Optional[List[str]] = None,
+        join_keys: Optional[List[str]] = None,
+        storage: Optional[SavedDatasetStorage] = None,
         full_feature_names: bool = False,
         tags: Optional[Dict[str, str]] = None,
         feature_service_name: Optional[str] = None,
+        namespace: str = "",
+        data_source_ref: str = "",
+        columns: Optional[List[Dict[str, Any]]] = None,
     ):
         self.name = name
-        self.features = features
-        self.join_keys = join_keys
+        self.features = features or []
+        self.join_keys = join_keys or []
         self.storage = storage
         self.full_feature_names = full_feature_names
         self.tags = tags or {}
         self.feature_service_name = feature_service_name
+        self.namespace = namespace
+        self.data_source_ref = data_source_ref
+        self.columns = columns or []
 
         self._retrieval_job = None
 
@@ -149,13 +161,23 @@ class SavedDataset:
         Args:
             saved_dataset_proto: A protobuf representation of a SavedDataset.
         """
+        storage = None
+        if saved_dataset_proto.spec.HasField("storage"):
+            storage = SavedDatasetStorage.from_proto(saved_dataset_proto.spec.storage)
+
         ds = SavedDataset(
             name=saved_dataset_proto.spec.name,
             features=list(saved_dataset_proto.spec.features),
             join_keys=list(saved_dataset_proto.spec.join_keys),
             full_feature_names=saved_dataset_proto.spec.full_feature_names,
-            storage=SavedDatasetStorage.from_proto(saved_dataset_proto.spec.storage),
+            storage=storage,
             tags=dict(saved_dataset_proto.spec.tags.items()),
+            namespace=saved_dataset_proto.spec.namespace,
+            data_source_ref=saved_dataset_proto.spec.data_source_ref,
+            columns=[
+                {"name": c.name, "type": c.type, "nullable": c.nullable}
+                for c in saved_dataset_proto.spec.columns
+            ],
         )
 
         if saved_dataset_proto.spec.feature_service_name:
@@ -200,9 +222,18 @@ class SavedDataset:
             features=self.features,
             join_keys=self.join_keys,
             full_feature_names=self.full_feature_names,
-            storage=self.storage.to_proto(),
             tags=self.tags,
+            namespace=self.namespace,
+            data_source_ref=self.data_source_ref,
+            columns=[
+                ColumnSchemaProto(
+                    name=c["name"], type=c.get("type", ""), nullable=c.get("nullable", True)
+                )
+                for c in self.columns
+            ],
         )
+        if self.storage:
+            spec.storage.CopyFrom(self.storage.to_proto())
         if self.feature_service_name:
             spec.feature_service_name = self.feature_service_name
 

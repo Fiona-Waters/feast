@@ -48,6 +48,21 @@ message SavedDatasetSpec {
 
   // User defined metadata
   map<string, string> tags = 7;
+
+  // Sub-grouping within a project. Maps to Iceberg namespace level 2.
+  string namespace = 9;
+
+  // Optional reference to a DataSource for connection info.
+  string data_source_ref = 10;
+
+  // Typed column definitions for Iceberg schema.
+  repeated ColumnSchema columns = 11;
+}
+
+message ColumnSchema {
+  string name = 1;
+  string type = 2;
+  bool nullable = 3;
 }
 
 message SavedDatasetStorage {

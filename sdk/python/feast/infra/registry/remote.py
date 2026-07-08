@@ -482,17 +482,27 @@ class RemoteRegistry(BaseRegistry):
         )
         self.stub.ApplyFeatureService(request)
 
-    def delete_saved_dataset(self, name: str, project: str, commit: bool = True):
+    def delete_saved_dataset(
+        self,
+        name: str,
+        project: str,
+        commit: bool = True,
+        namespace: str = "",
+    ):
         request = RegistryServer_pb2.DeleteSavedDatasetRequest(
-            name=name, project=project, commit=commit
+            name=name, project=project, commit=commit, namespace=namespace
         )
         self.stub.DeleteSavedDataset(request)
 
     def get_saved_dataset(
-        self, name: str, project: str, allow_cache: bool = False
+        self,
+        name: str,
+        project: str,
+        allow_cache: bool = False,
+        namespace: str = "",
     ) -> SavedDataset:
         request = RegistryServer_pb2.GetSavedDatasetRequest(
-            name=name, project=project, allow_cache=allow_cache
+            name=name, project=project, allow_cache=allow_cache, namespace=namespace
         )
         response = self.stub.GetSavedDataset(request)
         return SavedDataset.from_proto(response)
@@ -502,9 +512,10 @@ class RemoteRegistry(BaseRegistry):
         project: str,
         allow_cache: bool = False,
         tags: Optional[dict[str, str]] = None,
+        namespace: str = "",
     ) -> List[SavedDataset]:
         request = RegistryServer_pb2.ListSavedDatasetsRequest(
-            project=project, allow_cache=allow_cache, tags=tags
+            project=project, allow_cache=allow_cache, tags=tags, namespace=namespace
         )
         response = self.stub.ListSavedDatasets(request)
         return [

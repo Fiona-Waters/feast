@@ -558,6 +558,21 @@ class SqlRegistry(CachingRegistry):
             not_found_exception=SavedDatasetNotFound,
         )
 
+    def delete_saved_dataset(
+        self,
+        name: str,
+        project: str,
+        commit: bool = True,
+        namespace: str = "",
+    ):
+        return self._delete_object(
+            saved_datasets,
+            name,
+            project,
+            "saved_dataset_name",
+            SavedDatasetNotFound,
+        )
+
     def _get_validation_reference(self, name: str, project: str) -> ValidationReference:
         return self._get_object(
             table=validation_references,

@@ -263,10 +263,15 @@ def get_entity(registry_proto: RegistryProto, name: str, project: str) -> Entity
 
 
 def get_saved_dataset(
-    registry_proto: RegistryProto, name: str, project: str
+    registry_proto: RegistryProto,
+    name: str,
+    project: str,
+    namespace: str = "",
 ) -> SavedDataset:
     for saved_dataset in registry_proto.saved_datasets:
         if saved_dataset.spec.name == name and saved_dataset.spec.project == project:
+            if namespace and saved_dataset.spec.namespace != namespace:
+                continue
             return SavedDataset.from_proto(saved_dataset)
     raise SavedDatasetNotFound(name, project=project)
 
@@ -418,13 +423,18 @@ def list_data_sources(
 
 @registry_proto_cache_with_tags
 def list_saved_datasets(
-    registry_proto: RegistryProto, project: str, tags: Optional[dict[str, str]]
+    registry_proto: RegistryProto,
+    project: str,
+    tags: Optional[dict[str, str]],
+    namespace: str = "",
 ) -> List[SavedDataset]:
     saved_datasets = []
     for saved_dataset in registry_proto.saved_datasets:
         if saved_dataset.spec.project == project and utils.has_all_tags(
             saved_dataset.spec.tags, tags
         ):
+            if namespace and saved_dataset.spec.namespace != namespace:
+                continue
             saved_datasets.append(SavedDataset.from_proto(saved_dataset))
     return saved_datasets
 

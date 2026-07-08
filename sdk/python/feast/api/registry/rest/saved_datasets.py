@@ -49,6 +49,7 @@ def get_saved_dataset_router(grpc_handler) -> APIRouter:
     def get_saved_dataset(
         name: str,
         project: str = Query(...),
+        namespace: str = Query(""),
         include_relationships: bool = Query(
             False, description="Include relationships for this saved dataset"
         ),
@@ -58,6 +59,7 @@ def get_saved_dataset_router(grpc_handler) -> APIRouter:
             name=name,
             project=project,
             allow_cache=allow_cache,
+            namespace=namespace,
         )
         saved_dataset = grpc_call(grpc_handler.GetSavedDataset, req)
 
@@ -100,6 +102,7 @@ def get_saved_dataset_router(grpc_handler) -> APIRouter:
     @router.get("/saved_datasets")
     def list_saved_datasets(
         project: str = Query(...),
+        namespace: str = Query(""),
         allow_cache: bool = Query(default=True),
         tags: Dict[str, str] = Depends(parse_tags),
         include_relationships: bool = Query(
@@ -112,6 +115,7 @@ def get_saved_dataset_router(grpc_handler) -> APIRouter:
             project=project,
             allow_cache=allow_cache,
             tags=tags,
+            namespace=namespace,
             pagination=create_grpc_pagination_params(pagination_params),
             sorting=create_grpc_sorting_params(sorting_params),
         )

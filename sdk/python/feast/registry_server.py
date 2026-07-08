@@ -832,6 +832,7 @@ class RegistryServer(RegistryServer_pb2_grpc.RegistryServerServicer):
                 name=request.name,
                 project=request.project,
                 allow_cache=request.allow_cache,
+                namespace=request.namespace,
             ),
             actions=[AuthzedAction.DESCRIBE],
         ).to_proto()
@@ -847,6 +848,7 @@ class RegistryServer(RegistryServer_pb2_grpc.RegistryServerServicer):
                         project=request.project,
                         allow_cache=request.allow_cache,
                         tags=dict(request.tags),
+                        namespace=request.namespace,
                     ),
                 ),
                 actions=AuthzedAction.DESCRIBE,
@@ -866,14 +868,20 @@ class RegistryServer(RegistryServer_pb2_grpc.RegistryServerServicer):
         self, request: RegistryServer_pb2.DeleteSavedDatasetRequest, context
     ):
         saved_dataset = self.proxied_registry.get_saved_dataset(
-            name=request.name, project=request.project, allow_cache=False
+            name=request.name,
+            project=request.project,
+            allow_cache=False,
+            namespace=request.namespace,
         )
         assert_permissions(
             resource=saved_dataset,
             actions=[AuthzedAction.DELETE],
         )
         self.proxied_registry.delete_saved_dataset(
-            name=request.name, project=request.project, commit=request.commit
+            name=request.name,
+            project=request.project,
+            commit=request.commit,
+            namespace=request.namespace,
         )
 
         return Empty()

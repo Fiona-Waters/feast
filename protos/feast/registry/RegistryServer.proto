@@ -402,6 +402,7 @@ message GetSavedDatasetRequest {
     string name = 1;
     string project = 2;
     bool allow_cache = 3;
+    string namespace = 4;
 }
 
 message ListSavedDatasetsRequest {
@@ -410,6 +411,7 @@ message ListSavedDatasetsRequest {
     map<string,string> tags = 3;
     PaginationParams pagination = 4;
     SortingParams sorting = 5;
+    string namespace = 6;
 }
 
 message ListSavedDatasetsResponse {
@@ -421,6 +423,7 @@ message DeleteSavedDatasetRequest {
     string name = 1;
     string project = 2;
     bool commit = 3;
+    string namespace = 4;
 }
 
 // ValidationReference

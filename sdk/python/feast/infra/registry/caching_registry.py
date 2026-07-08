@@ -315,12 +315,16 @@ class CachingRegistry(BaseRegistry):
         pass
 
     def get_saved_dataset(
-        self, name: str, project: str, allow_cache: bool = False
+        self,
+        name: str,
+        project: str,
+        allow_cache: bool = False,
+        namespace: str = "",
     ) -> SavedDataset:
         if allow_cache:
             self._refresh_cached_registry_if_necessary()
             return proto_registry_utils.get_saved_dataset(
-                self.cached_registry_proto, name, project
+                self.cached_registry_proto, name, project, namespace=namespace
             )
         return self._get_saved_dataset(name, project)
 
@@ -335,11 +339,12 @@ class CachingRegistry(BaseRegistry):
         project: str,
         allow_cache: bool = False,
         tags: Optional[dict[str, str]] = None,
+        namespace: str = "",
     ) -> List[SavedDataset]:
         if allow_cache:
             self._refresh_cached_registry_if_necessary()
             return proto_registry_utils.list_saved_datasets(
-                self.cached_registry_proto, project, tags
+                self.cached_registry_proto, project, tags, namespace=namespace
             )
         return self._list_saved_datasets(project, tags)
 
