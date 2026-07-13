@@ -54,15 +54,21 @@ class STSCredentialVender:
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:GetObject", "s3:ListBucket"],
+                        "Action": ["s3:GetObject"],
                         "Resource": [
                             f"arn:aws:s3:::{bucket}/{prefix}*",
-                            f"arn:aws:s3:::{bucket}",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [f"arn:aws:s3:::{bucket}"],
                         "Condition": {
-                            "StringLike": {"s3:prefix": [f"{prefix}*"]}
+                            "StringLike": {
+                                "s3:prefix": [f"{prefix}*"]
+                            }
                         },
-                    }
+                    },
                 ],
             }
         )
