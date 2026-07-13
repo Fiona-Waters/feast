@@ -154,6 +154,7 @@ class VolumeInfo(BaseModel):
     created_at: Optional[int] = Field(default=None, alias="created-at")
     updated_at: Optional[int] = Field(default=None, alias="updated-at")
     properties: Dict[str, str] = {}
+    config: Dict[str, str] = {}
 
     model_config = {"populate_by_name": True}
 
@@ -190,8 +191,12 @@ class SearchResult(BaseModel):
     name: str
     description: Optional[str] = None
     properties: Dict[str, str] = {}
+    score: int = 0
 
 
 class SearchResponse(BaseModel):
     query: str
     results: List[SearchResult]
+    total: int = 0
+    page: int = 1
+    limit: int = 50
