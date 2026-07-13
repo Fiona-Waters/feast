@@ -1,4 +1,8 @@
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
 
 from feast import FeatureStore
 from feast.api.catalog.errors import (
@@ -10,6 +14,7 @@ from feast.api.catalog.mapping import (
     CATALOG_MANAGED_TAG,
     saved_dataset_to_load_table_response,
 )
+from feast.api.catalog.metadata_reader import IcebergMetadataReader
 from feast.api.catalog.models import (
     CreateTableRequest,
     ListTablesResponse,
@@ -22,6 +27,8 @@ from feast.api.catalog.namespaces import DEFAULT_SCHEMA, resolve_namespace
 from feast.errors import FeastObjectNotFoundException
 from feast.saved_dataset import SavedDataset
 
+logger = logging.getLogger(__name__)
+
 TABLE_ASSET_TYPE = "table"
 
 
@@ -29,7 +36,10 @@ def _is_table(ds: SavedDataset) -> bool:
     return ds.tags.get("asset_type") == TABLE_ASSET_TYPE
 
 
-def get_table_router(store: FeatureStore) -> APIRouter:
+def get_table_router(
+    store: FeatureStore,
+    metadata_reader: Optional[IcebergMetadataReader] = None,
+) -> APIRouter:
     router = APIRouter(tags=["iceberg-catalog-tables"])
 
     def _ensure_namespace_exists(namespace: str) -> None:
@@ -101,7 +111,7 @@ def get_table_router(store: FeatureStore) -> APIRouter:
         return saved_dataset_to_load_table_response(ds, namespace)
 
     @router.get("/namespaces/{namespace}/namespaces/{schema}/tables/{table}")
-    def load_table(namespace: str, schema: str, table: str) -> LoadTableResponse:
+    def load_table(namespace: str, schema: str, table: str):
         project = resolve_namespace(namespace, schema)
         _ensure_namespace_exists(project)
         try:
@@ -112,6 +122,24 @@ def get_table_router(store: FeatureStore) -> APIRouter:
             raise TableNotFoundException(f"{namespace}.{schema}", table)
         if not _is_table(ds):
             raise TableNotFoundException(f"{namespace}.{schema}", table)
+
+        location = ds.tags.get("location", "")
+        if metadata_reader and location.startswith("s3://"):
+            catalog_properties = {
+                k: v
+                for k, v in ds.tags.items()
+                if k not in (CATALOG_MANAGED_TAG, "asset_type", "location")
+            }
+            real_response = metadata_reader.build_load_table_response(
+                location, table_properties=catalog_properties
+            )
+            if real_response:
+                return JSONResponse(content=real_response)
+            logger.warning(
+                "Could not read Iceberg metadata for %s at %s — falling back to synthetic",
+                table, location,
+            )
+
         return saved_dataset_to_load_table_response(ds, namespace)
 
     @router.head("/namespaces/{namespace}/namespaces/{schema}/tables/{table}")
