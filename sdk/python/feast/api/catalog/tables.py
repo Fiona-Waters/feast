@@ -1,6 +1,10 @@
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, Response
 
 from feast import FeatureStore
+from feast.api.catalog.credentials import STSCredentialVender
 from feast.api.catalog.errors import (
     NamespaceNotFoundException,
     TableAlreadyExistsException,
@@ -22,6 +26,8 @@ from feast.api.catalog.namespaces import DEFAULT_SCHEMA, resolve_namespace
 from feast.errors import FeastObjectNotFoundException
 from feast.saved_dataset import SavedDataset
 
+logger = logging.getLogger(__name__)
+
 TABLE_ASSET_TYPE = "table"
 
 
@@ -29,7 +35,10 @@ def _is_table(ds: SavedDataset) -> bool:
     return ds.tags.get("asset_type") == TABLE_ASSET_TYPE
 
 
-def get_table_router(store: FeatureStore) -> APIRouter:
+def get_table_router(
+    store: FeatureStore,
+    credential_vender: Optional[STSCredentialVender] = None,
+) -> APIRouter:
     router = APIRouter(tags=["iceberg-catalog-tables"])
 
     def _ensure_namespace_exists(namespace: str) -> None:
@@ -112,7 +121,16 @@ def get_table_router(store: FeatureStore) -> APIRouter:
             raise TableNotFoundException(f"{namespace}.{schema}", table)
         if not _is_table(ds):
             raise TableNotFoundException(f"{namespace}.{schema}", table)
-        return saved_dataset_to_load_table_response(ds, namespace)
+        result = saved_dataset_to_load_table_response(ds, namespace)
+        if credential_vender:
+            location = ds.tags.get("location", "")
+            if location.startswith("s3://"):
+                try:
+                    vended = credential_vender.vend(location)
+                    result.config.update(vended)
+                except Exception as e:
+                    logger.warning("STS vending failed for %s: %s", table, e)
+        return result
 
     @router.head("/namespaces/{namespace}/namespaces/{schema}/tables/{table}")
     def table_exists(namespace: str, schema: str, table: str) -> Response:

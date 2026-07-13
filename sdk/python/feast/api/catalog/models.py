@@ -154,6 +154,7 @@ class VolumeInfo(BaseModel):
     created_at: Optional[int] = Field(default=None, alias="created-at")
     updated_at: Optional[int] = Field(default=None, alias="updated-at")
     properties: Dict[str, str] = {}
+    config: Dict[str, str] = {}
 
     model_config = {"populate_by_name": True}
 
