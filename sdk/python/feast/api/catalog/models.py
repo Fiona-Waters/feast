@@ -191,8 +191,12 @@ class SearchResult(BaseModel):
     name: str
     description: Optional[str] = None
     properties: Dict[str, str] = {}
+    score: int = 0
 
 
 class SearchResponse(BaseModel):
     query: str
     results: List[SearchResult]
+    total: int = 0
+    page: int = 1
+    limit: int = 50
